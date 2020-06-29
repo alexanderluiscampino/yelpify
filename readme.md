@@ -1,4 +1,4 @@
-# Capstone
+# Yelpify
 The goal of this project is to create a data pipeline for Yelp business review data and stock market values. Potentially, once the data is in its final format, it can be used to derive relationships between how much people use they app, their sentiment on reviews and the stock price of yelp and others businesses that yelp users review ( Chipotle, McDonalds, ShakeShack, etc..)
 
 The following techologies shall be used for this pipeline:
