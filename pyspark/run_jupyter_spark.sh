@@ -1,0 +1,1 @@
+docker run --rm -p 10000:8888 --name pyspark-notebook -v $(pwd)/pyspark:/home/jovyan/work jupyter/pyspark-notebook

@@ -1,0 +1,9 @@
+{
+    "EVENTS_DATA_PATH": "s3://udacity-dend/log_data",
+    "EVENTS_JSONPATH": "s3://udacity-dend/log_json_path.json",
+    "EVENTS_DATA_PARTITIONED": true,
+    "SONGS_DATA_PATH": "s3://udacity-dend/song_data",
+    "SONGS_DATA_PARTITIONED": true,
+    "INSERT_MODE_DIM": "truncate",
+    "INSERT_MODE_FACT": "truncate"
+}
