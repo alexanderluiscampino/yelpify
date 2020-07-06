@@ -1,201 +1,258 @@
 class SqlQueries:
 
-    artists_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.artists (
-        artistid varchar(256) NOT NULL,
-        name varchar(256),
-        location varchar(256),
-        lattitude numeric(18,0),
-        longitude numeric(18,0)
-    );
+    business_fact_create = ("""
+        CREATE TABLE "business_fact" (
+        "business_id" varchar PRIMARY KEY,
+        "name" varchar,
+        "categories" varchar,
+        "review_count" bigint,
+        "stars" count,
+        "city_id" varchar,
+        "address" varchar,
+        "postal_code" varchar
+        );
     """)
 
-    songplays_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.songplays (
-	playid varchar(32) NOT NULL,
-	start_time timestamp NOT NULL,
-	userid int4 NOT NULL,
-	"level" varchar(256),
-	songid varchar(256),
-	artistid varchar(256),
-	sessionid int4,
-	location varchar(256),
-	user_agent varchar(256),
-	CONSTRAINT songplays_pkey PRIMARY KEY (playid)
-    );
+    city_fact_create = ("""
+        CREATE TABLE "city_fact" (
+        "city_id" varchar PRIMARY KEY,
+        "state" varchar,
+        "city" varchar
+        );
     """)
 
-    songs_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.songs (
-	songid varchar(256) NOT NULL,
-	title varchar(256),
-	artistid varchar(256),
-	"year" int4,
-	duration numeric(18,0),
-	CONSTRAINT songs_pkey PRIMARY KEY (songid)
-    );
-    """)
-
-    staging_events_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.staging_events (
-	artist varchar(256),
-	auth varchar(256),
-	firstname varchar(256),
-	gender varchar(256),
-	iteminsession int4,
-	lastname varchar(256),
-	length numeric(18,0),
-	"level" varchar(256),
-	location varchar(256),
-	"method" varchar(256),
-	page varchar(256),
-	registration numeric(18,0),
-	sessionid int4,
-	song varchar(256),
-	status int4,
-	ts int8,
-	useragent varchar(256),
-	userid int4);
-    """)
-
-    staging_songs_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.staging_songs (
-	num_songs int4,
-	artist_id varchar(256),
-	artist_name varchar(256),
-	artist_latitude numeric(18,0),
-	artist_longitude numeric(18,0),
-	artist_location varchar(256),
-	song_id varchar(256),
-	title varchar(256),
-	duration numeric(18,0),
-	"year" int4
-    );
-    """)
-
-    time_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public."time" (
-	start_time timestamp NOT NULL,
-	"hour" int4,
-	"day" int4,
-	week int4,
-	"month" varchar(256),
-	"year" int4,
-	weekday varchar(256),
-	CONSTRAINT time_pkey PRIMARY KEY (start_time)
-    );
-    """)
-
-    users_table_create = ("""
-    CREATE TABLE IF NOT EXISTS public.users (
-	userid int4 NOT NULL,
-	first_name varchar(256),
-	last_name varchar(256),
-	gender varchar(256),
-	"level" varchar(256),
-	CONSTRAINT users_pkey PRIMARY KEY (userid)
-    );
-    """)
-
-    songplays_table_insert = ("""
-        INSERT INTO {TABLE_NAME}(
-            playid,
-            start_time,
-            userid,
-            "level",
-            songid,
-            artistid,
-            sessionid,
-            location,
-            user_agent
+    users_fact_create = ("""
+        CREATE TABLE "users_fact" (
+        "user_id" varchar PRIMARY KEY,
+        "yelping_since" timestamp,
+        "name" varchar,
+        "average_stars" int,
+        "review_count" bigint
         )
-        SELECT
-                md5(events.sessionid || events.start_time) songplay_id,
-                events.start_time, 
-                events.userid, 
-                events.level, 
-                songs.song_id, 
-                songs.artist_id, 
-                events.sessionid, 
-                events.location, 
-                events.useragent
-                FROM (SELECT TIMESTAMP 'epoch' + ts/1000 * interval '1 second' AS start_time, *
-            FROM public.staging_events
-            WHERE page='NextSong') events
-            LEFT JOIN public.staging_songs songs
-            ON events.song = songs.title
-                AND events.artist = songs.artist_name
-                AND events.length = songs.duration
     """)
 
-    users_table_insert = ("""
-        INSERT INTO {TABLE_NAME}(
-            userid,
-            first_name,
-            last_name,
-            gender,
-            "level"
-            )
-        SELECT distinct 
-            userid, 
-            firstname, 
-            lastname, 
-            gender, 
-            level
-        FROM public.staging_events
-        WHERE page='NextSong'
+    review_dim_create = ("""
+        CREATE TABLE "review_dim" (
+        "review_id" varchar PRIMARY KEY,
+        "review_date" timestamp,
+        "business_id" varchar,
+        "user_id" varchar
+        );
     """)
 
-    songs_table_insert = ("""
-        INSERT INTO {TABLE_NAME}(
-            songid,
-            title,
-            artistid,
-            "year",
-            duration
-            )
-        SELECT distinct 
-            song_id, 
-            title, 
-            artist_id, 
-            year, 
-            duration
-        FROM public.staging_songs
+    review_fact_create = ("""
+        CREATE TABLE "review_fact" (
+        "review_id" varchar PRIMARY KEY,
+        "stars" int,
+        "text" varchar
+        );
     """)
 
-    artists_table_insert = ("""
-        INSERT INTO {TABLE_NAME}(
-            artistid,
+    stock_fact_create = ("""
+        CREATE TABLE "stock_fact" (
+        "stock_id" varchar PRIMARY KEY,
+        "business_name" varchar,
+        "date" timestamp,
+        "close_value" float
+        );
+    """)
+
+    tip_fact_create = ("""
+        CREATE TABLE "tip_fact" (
+        "tip_id" varchar PRIMARY KEY,
+        "business_id" varchar,
+        "user_id" varchar,
+        "text" varchar,
+        "tip_date" timestamp,
+        "compliment_count" bigint
+        );
+    """)
+
+    review_stage_create = ("""
+        CREATE TABLE "review_staging" (
+        "business_id" varchar
+        "cool" bigint,
+        "funny" bigint,
+        "review_id" varchar,
+        "stars" double,
+        "text" varchar,
+        "useful" bigint,
+        "user_id" string,
+        "dt" varchar
+        );
+    """)
+    business_stage_create = ("""
+        CREATE TABLE "business_staging" (
+        "business_id" varchar,
+        "categories" varchar,
+        "state" varchar,
+        "city" varchar,
+        "address" varchar,
+        "postal_code" string,
+        "review_count" bigint,
+        "stars" double
+        );
+    """)
+    tip_stage_create = ("""
+        CREATE TABLE "tip_staging" (
+        "business_id" varchar,
+        "compliment_count" bigint,
+        "text" varchar,
+        "user_id" varchar,
+        "dt" varchar
+        );
+    """)
+    users_stage_create = ("""
+        CREATE TABLE "users_staging" (
+        "average_stars" varchar 
+        "compliment_cool" bigint,
+        "compliment_cute" bigint,
+        "compliment_funny" bigint,
+        "compliment_hot" bigint,
+        "compliment_list" bigint,
+        "compliment_more" bigint,
+        "compliment_note" bigint,
+        "compliment_photos" bigint,
+        "compliment_plain" bigint,
+        "compliment_profile" bigint,
+        "compliment_writer" bigint,
+        "cool" bigint,
+        "elite" varchar,
+        "fans" bigint,
+        "friends" varchar,
+        "funny" bigint,
+        "name" varchar,
+        "review_count" bigint,
+        "useful" bigint,
+        "user_id" varchar,
+        "yelping_since" varchar
+        );
+    """)
+
+    stock_stage_create = ("""
+        CREATE TABLE "stock_staging" (
+        "Date" varchar,
+        "Open" double,
+        "High" double,
+        "Low" double,
+        "Close" double,
+        "Volume" bigint,
+        "OpenInt" bigint
+        );
+    """)
+
+    users_fact_table_insert = ("""
+        INSERT INTO users_fact (
+            user_id,
+            yelping_since,
             name,
-            location,
-            lattitude,
-            longitude
+            average_stars,
+            review_count
             )
         SELECT distinct 
-            artist_id, 
-            artist_name, 
-            artist_location, 
-            artist_latitude, 
-            artist_longitude
-        FROM public.staging_songs
+            user_id, 
+            CAST(yelping_since as timestamp) AS yelping_since,
+            name, 
+            average_stars, 
+            review_count
+        FROM users_staging
     """)
 
-    time_table_insert = ("""
-        INSERT INTO {TABLE_NAME}(
-            start_time,
-            "hour",
-            "day",
-            week,
-            "month",
-            "year",
-            weekday
+    business_fact_table_insert = ("""
+        INSERT INTO business_fact (
+            business_id,
+            name,
+            categories,
+            review_count,
+            stars,
+            city_id,
+            address,
+            postal_code
             )
-        SELECT start_time, 
-                extract(hour from start_time), 
-                extract(day from start_time), 
-                extract(week from start_time), 
-               extract(month from start_time), 
-               extract(year from start_time), 
-               extract(dayofweek from start_time)
-        FROM public.songplays
+        SELECT distinct 
+            business_id,
+            name,
+            categories,
+            review_count,
+            stars,
+            b.city_id,
+            address,
+            postal_code
+        FROM business_staging a
+        LEFT JOIN city_fact b ON a.city = b.city AND a.state = b.state
+    """)
+
+    city_fact_table_insert = ("""
+        INSERT INTO city_fact (
+            city_id,
+            state,
+            city
+            )
+        SELECT distinct
+            md5(state || city) city_id,
+            state,
+            city
+        FROM business_staging
+    """)
+
+    review_dim_table_insert = ("""
+        INSERT INTO review_dim (
+            review_id,
+            review_date,
+            business_id,
+            user_id
+            )
+        SELECT distinct
+            review_id,
+            CAST(dt as timestamp) AS review_date,
+            business_id,
+            user_id
+        FROM review_staging
+    """)
+
+    review_fact_table_insert = ("""
+        INSERT INTO review_fact (
+            review_id,
+            stars,
+            text
+            )
+        SELECT distinct
+            review_id,
+            stars,
+            text
+        FROM review_staging
+    """)
+
+    tip_fact_table_insert = ("""
+        INSERT INTO tip_fact (
+            tip_id,
+            business_id,
+            user_id,
+            text,
+            tip_date,
+            compliment_count
+            )
+        SELECT distinct
+            md5(business_id || user_id || tip_date)  tip_id,
+            business_id,
+            user_id,
+            text,
+            CAST(dt as timestamp) AS tip_date,
+            compliment_count
+        FROM tip_staging
+    """)
+
+    stock_fact_table_insert = ("""
+        INSERT INTO stock_fact (
+            stock_id,
+            business_name,
+            date,
+            close_value
+            )
+        SELECT distinct
+            md5('cmg' || date ) stock_id,
+            'chipotle' AS business_name,
+            Date,
+            Close
+        FROM stock_staging
     """)

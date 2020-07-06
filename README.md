@@ -273,7 +273,7 @@ We are going to use the review as our dimension table with 6 supporting fact tab
 
 #### Data Dictionary
 
-```
+``` JS
 Table business_fact as B {
   business_id varchar [pk]
   name varchar
@@ -284,15 +284,15 @@ Table business_fact as B {
   address varchar
   postal_code varchar
 }
-
+```
+``` JS
 Table city_fact as C {
   city_id varchar [pk] 
   state varchar
   city varchar
 }
-
-
-
+```
+``` JS
 Table users_fact as U {
   user_id varchar [pk]
   yelping_since timestamp
@@ -300,7 +300,8 @@ Table users_fact as U {
   average_stars int
   review_count bigint
 }
-
+```
+``` JS
 Table review_dim as R {
   review_id varchar [pk]
   review_date timestamp
@@ -309,22 +310,24 @@ Table review_dim as R {
 
   
 }
-
+```
+``` JS
 Table review_fact as RF {
   review_id varchar [pk]
     stars int
   text varchar
   
 }
-
+```
+``` JS
 Table stock_fact as S{
   stock_id varchar [pk]
   business_name varchar
   date timestamp
   close_value float
 }
-
-
+```
+``` JS
 Table tip_fact as T {
   tip_id varchar [pk]
   business_id varchar
@@ -333,7 +336,8 @@ Table tip_fact as T {
   tip_date timestamp
   compliment_count bigint
 }
-
+```
+``` JS
 Ref: T.business_id > B.business_id
 Ref: U.user_id < T.user_id
 Ref: B.city_id > C.city_id
@@ -346,4 +350,4 @@ Ref: B.name < S.business_name
 
 #### Database Diagram
 
-![Data Model](./yelpify.png)
+![Data Model](./yelpify_dbd.png)
