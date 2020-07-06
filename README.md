@@ -147,7 +147,7 @@ In order to get these giants datasets a little bit more digestible for Redshift,
 On top of this, we will also output data to a data-lake, where each dataset will be stored in S3, efficiently partioned. This data lake can be used by all sorts of purposes in the future.
 
 ### Checkin
-This dataset will be ingnored all together since it does not offer any value for our analysis goal
+This dataset will be ignored all together since it does not offer any value for our analysis goal
 
 ### User
 All the fields will be kept in the `user` dataset. These are all useful. In S3 the data-lake this dataset will be partitioned by:
@@ -221,6 +221,20 @@ The following is a partition example for this data `review/pyear=2018/pmonth=5/p
 
 ### Tip
 
+This dataset will have similar pre-processing as other ones, with partitions being done by `year, month, day` of tip/comment. 
+Example of the data:
+```
++--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
+|         business_id|compliment_count|                text|             user_id|                 dt|pmonth|pyear|pday|
++--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
+|UYX5zL_Xj9WEc_Wp-...|               0|Here for a quick mtg|hf27xTME3EiCp6NL6...|2013-11-26 18:20:08|    11| 2013|  26|
+|Ch3HkwQYv1YKw_FO0...|               0|Cucumber strawber...|uEvusDwoSymbJJ0au...|2014-06-15 22:26:45|     6| 2014|  15|
+|rDoT-MgxGRiYqCmi0...|               0|Very nice good se...|AY-laIws3S7YXNl_f...|2016-07-18 22:03:42|     7| 2016|  18|
+|OHXnDV01gLokiX1EL...|               0|It's a small plac...|Ue_7yUlkEbX4AhnYd...|2014-06-06 01:10:34|     6| 2014|   6|
+|GMrwDXRlAZU2zj5nH...|               0|8 sandwiches, $24...|LltbT_fUMqZ-ZJP-v...|2011-04-08 18:12:01|     4| 2011|   8|
++--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
+```
+
 ## Stock Market - Dataset
 This is a simple dataset that can be obtained from an [API](https://medium.com/@andy.m9627/the-ultimate-guide-to-stock-market-apis-for-2020-1de6f55adbb) and its simply stored in S3  as a comma separated value format. These datasets, one per company to be analyzed, tend to be quite small. Use it as a broadcast table is quite easy.
 
@@ -253,4 +267,82 @@ A Cluster will be spun-up with the following characteristics:
 - DWH_NODE_TYPE=dc2.large
 
 ### Data Model
-A snowflake model will be used. This makes it very easy to access data
+A snowflake model will be used. This makes it very easy to access data for any sort of downstream user, such as a Analyst, ML engineer, business reviewer, etc. Luckily, the dataset we got is already quite there when it comes to snowflake model, we just need to make small adjustements. 
+
+We are going to use the review as our dimension table with 6 supporting fact tables. Additionally, we are going to split the data that comes from the review original dataset into facts and dimensions. 
+
+#### Data Dictionary
+
+```
+Table business_fact as B {
+  business_id varchar [pk]
+  name varchar
+  categories varchar
+  review_count bigint
+  stars count
+  city_id varchar
+  address varchar
+  postal_code varchar
+}
+
+Table city_fact as C {
+  city_id varchar [pk] 
+  state varchar
+  city varchar
+}
+
+
+
+Table users_fact as U {
+  user_id varchar [pk]
+  yelping_since timestamp
+  name varchar
+  average_stars int
+  review_count bigint
+}
+
+Table review_dim as R {
+  review_id varchar [pk]
+  review_date timestamp
+  business_id varchar
+  user_id varchar
+
+  
+}
+
+Table review_fact as RF {
+  review_id varchar [pk]
+    stars int
+  text varchar
+  
+}
+
+Table stock_fact as S{
+  stock_id varchar [pk]
+  business_name varchar
+  date timestamp
+  close_value float
+}
+
+
+Table tip_fact as T {
+  tip_id varchar [pk]
+  business_id varchar
+  user_id varchar
+  text varchar
+  tip_date timestamp
+  compliment_count bigint
+}
+
+Ref: B.business_id > T.business_id
+Ref: U.user_id > T.user_id
+Ref: B.city_id > C.city_id
+Ref: B.business_id > R.business_id
+Ref: U.user_id > R.user_id
+Ref: RF.review_id > R.review_id
+Ref: B.name > S.business_name
+```
+
+#### Database Diagram
+
+![Data Model](./yelpify.png)
