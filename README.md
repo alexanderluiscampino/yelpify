@@ -1,6 +1,8 @@
 # Yelpify
 The goal of this project is to create a data pipeline for Yelp business review data and stock market values. Potentially, once the data is in its final format, it can be used to derive relationships between how much people use they app, their sentiment on reviews and the stock price of yelp and others businesses that yelp users review ( Chipotle, McDonalds, ShakeShack, etc..)
 
+We can help business owners checking how well their business listed on yelp are doing in the eyes of the public, by bringing this data to the surface and build busines specific dashboards.
+
 The following techologies shall be used for this pipeline:
 
 - **Storage:** AWS S3 for file object storage due to his high availbility, simple access, low cost for massive amounts of that and almost infinite scalability in terms of storage space. Storing 1gb or 10tb of data only increases the cost of application but not the performance of the underlying system. This is a perfect solution for ever increasing datasets with frequent access of from/to data pipelines
@@ -149,7 +151,7 @@ This dataset will be ingnored all together since it does not offer any value for
 
 ### User
 All the fields will be kept in the `user` dataset. These are all useful. In S3 the data-lake this dataset will be partitioned by:
-- yelping_since `year, month,day`
+- yelping_since `year, month, day`
 
 This partitioning style will be extremely useful. This is our second largest dataset, and being able to run a subset of the data through the pipeline is of major importance. Having a proper way of segment the data, such as by date, makes it extremely useful and coupled with *Airflow* backfill capabilities will make our pipeline run smoothly.
 
@@ -219,6 +221,22 @@ The following is a partition example for this data `review/pyear=2018/pmonth=5/p
 
 ### Tip
 
+## Stock Market - Dataset
+This is a simple dataset that can be obtained from an [API](https://medium.com/@andy.m9627/the-ultimate-guide-to-stock-market-apis-for-2020-1de6f55adbb) and its simply stored in S3  as a comma separated value format. These datasets, one per company to be analyzed, tend to be quite small. Use it as a broadcast table is quite easy.
+
+For this specific dataset the data was found [here](https://www.kaggle.com/borismarjanovic/price-volume-data-for-all-us-stocks-etfs). This huge dataset is limited on the timeframe, but has more than 7000 companies registered in the NY exchange.
+
+There is no need for pre-processing of this data. Upon loading it to *Redshift* the company name can be added as a column such that it can be joined in the *Yelp* dataset on the `business_name`
+
+```
+Date,Open,High,Low,Close,Volume,OpenInt
+2012-03-02,22.05,26,22,24.58,17504991,0
+2012-03-05,24.86,24.86,20.9,20.99,2991210,0
+2012-03-06,19.83,20.5,19.36,20.5,1154290,0
+2012-03-07,20.49,20.63,19.95,20.25,387956,0
+2012-03-08,20.3,20.39,19.96,20,436871,0
+```
+
 ## Airflow - Orchestrator
 Airflow will be used to orchestrate this data pipeline. This is an excellent tool for this sort of jobs, which involve multiple moving parts, with many componenents coming from different places. Airflow has the concept of the DAG, which is a sequential and independent succession of steps. Each task in this DAG will apply some sort of business logic on the data pipeline. 
 
@@ -227,3 +245,12 @@ Airflow will be used to orchestrate this data pipeline. This is an excellent too
 
 ### Backfill
 One of the most acclaimed concepts of *Airflow* is the backfill. This allows for a pipeline that was engineered today, run on data that was generated in the past. Let's imagine that our app generates a certain amount of data everyday, which needs to be processed and put in our *Redshift* cluster. The pipeline should not run on the full dataset everytime it runs, for performance reasons and also redundancy. If all these datasets, which can be split by day, have the same format, our pipeline can run on them on day-per-day basis. This allows for short runs our data pipeline is manageable and digestible pieces of the data. In turn, we can run a pipeline created today and add in the start date parameter to be sometime in the past ( e.g. 3 years ago) alongside the frequency our pipeline should be run(e.g. daily). Airflow will than create runs for all the dates from the start data until today. Within the DAG itself the code will have access to the timestamp parameter and can then use it to select the correct dataset from S3
+
+## Redshift
+A Cluster will be spun-up with the following characteristics:
+- DWH_CLUSTER_TYPE=multi-node
+- DWH_NUM_NODES=4
+- DWH_NODE_TYPE=dc2.large
+
+### Data Model
+A snowflake model will be used. This makes it very easy to access data

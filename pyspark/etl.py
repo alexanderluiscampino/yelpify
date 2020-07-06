@@ -84,6 +84,8 @@ def run_sparkify_etl(output_bucket_name: str, song_data_path: str, log_data_path
         log_data_path {str} -- S3 Path to Raw Log Data
     """
 
+    
+
     spark = create_spark_session()
 
     logger.info(f"Running Sparkigy ETL.\n \
