@@ -15,7 +15,7 @@ Let's address the following 3 future *what if* scenarios:
     * This will not pose any problem, since S3 scalability is tremendous. Due to its object store capabilities, storing 1gb or 100gb of data will incurr in the same access speed and performance. Will one increase its costs. Likewise, the data backing up the *Redshift* cluster will also not suffer with its increase, since more storage space can be added to the cluster on demand and as needed. The only factor to consider is cost of such operations
 * **The pipelines would be run on a daily basis by 7 am every day**
     * This is as easy as it gets by setting the frequency of *Airflow* to run daily. Furthermore, they way the pipeline is set-up, it will only be run on the daily subset of the data, which is extremely reduced. That will allow for a very performant pipeline run.
-* **The database needed to be accessed by 100+ people**
+* **The database needed to be accessed by 100| people**
     * Also not a problem for our *Redshift* Cluster, since its hardware can be changed on demand by adding more nodes to it in response to the demand of our downstream users.
 
 
@@ -151,21 +151,19 @@ This dataset will be ignored all together since it does not offer any value for 
 
 ### User
 All the fields will be kept in the `user` dataset. These are all useful. In S3 the data-lake this dataset will be partitioned by:
-- yelping_since `year, month, day`
+- yelping_since  (`year, month, day`)
 
 This partitioning style will be extremely useful. This is our second largest dataset, and being able to run a subset of the data through the pipeline is of major importance. Having a proper way of segment the data, such as by date, makes it extremely useful and coupled with *Airflow* backfill capabilities will make our pipeline run smoothly.
 
-```
-+--------+-------------+-------------------+-----+------+----+
+
 |    name|average_stars|      yelping_since|pyear|pmonth|pday|
-+--------+-------------+-------------------+-----+------+----+
+|--------|-------------|-------------------|-----|------|----|
 |  Rafael|         3.57|2007-07-06 03:27:11| 2007|     7|   6|
 |Michelle|         3.84|2008-04-28 01:29:25| 2008|     4|  28|
 |  Martin|         3.44|2008-08-28 23:40:05| 2008|     8|  28|
 |    John|         3.08|2008-09-20 00:08:14| 2008|     9|  20|
 |    Anne|         4.37|2008-08-09 00:30:27| 2008|     8|   9|
-+--------+-------------+-------------------+-----+------+----+
-```
+
 
 ### Business
 This dataset will be highly reduced in the number of columns. Since most columns are unnecessary for our goal, only the following will be kept:
@@ -183,17 +181,14 @@ Additionally, the data lake will have the following partitions:
 - state
 - city
 
-```
-+--------------------+-----+------+---------------+
 |                name|stars|pstate|          pcity|
-+--------------------+-----+------+---------------+
+|--------------------|-----|------|---------------|
 |The Range At Lake...|  3.5|    NC|      Cornelius|
 |   Carlos Santo, NMD|  5.0|    AZ|     Scottsdale|
 |             Felinus|  5.0|    QC|       Montreal|
 |Nevada House of Hose|  2.5|    NV|North Las Vegas|
 |USE MY GUY SERVIC...|  4.5|    AZ|           Mesa|
-+--------------------+-----+------+---------------+
-```
+
 
 ### Review
 This is ultimately the most important dataset. It sores all the review made by clients on the respective establishments. 
@@ -205,17 +200,17 @@ Partitions:
 - pyear
 - pmonth
 - pday
-```
-+-----+--------------------+-----+------+----+
+
+
 |stars|                text|pyear|pmonth|pday|
-+-----+--------------------+-----+------+----+
+|-----|--------------------|-----|------|----|
 |  2.0|As someone who ha...| 2015|     4|   4|
 |  1.0|I am actually hor...| 2013|    12|   7|
 |  5.0|I love Deagan's. ...| 2015|    12|   7|
 |  1.0|Dismal, lukewarm,...| 2011|     5|   6|
 |  4.0|Oh happy day, fin...| 2017|     1|   7|
-+-----+--------------------+-----+------+----+
-```
+
+
 
 The following is a partition example for this data `review/pyear=2018/pmonth=5/pday=4`. Which makes its super easy to retrieve the file corresponding to a certain date and upload it to the *Redshift* cluster
 
@@ -223,17 +218,16 @@ The following is a partition example for this data `review/pyear=2018/pmonth=5/p
 
 This dataset will have similar pre-processing as other ones, with partitions being done by `year, month, day` of tip/comment. 
 Example of the data:
-```
-+--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
+
 |         business_id|compliment_count|                text|             user_id|                 dt|pmonth|pyear|pday|
-+--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
+|--------------------|----------------|--------------------|--------------------|-------------------|------|-----|----|
 |UYX5zL_Xj9WEc_Wp-...|               0|Here for a quick mtg|hf27xTME3EiCp6NL6...|2013-11-26 18:20:08|    11| 2013|  26|
 |Ch3HkwQYv1YKw_FO0...|               0|Cucumber strawber...|uEvusDwoSymbJJ0au...|2014-06-15 22:26:45|     6| 2014|  15|
 |rDoT-MgxGRiYqCmi0...|               0|Very nice good se...|AY-laIws3S7YXNl_f...|2016-07-18 22:03:42|     7| 2016|  18|
 |OHXnDV01gLokiX1EL...|               0|It's a small plac...|Ue_7yUlkEbX4AhnYd...|2014-06-06 01:10:34|     6| 2014|   6|
 |GMrwDXRlAZU2zj5nH...|               0|8 sandwiches, $24...|LltbT_fUMqZ-ZJP-v...|2011-04-08 18:12:01|     4| 2011|   8|
-+--------------------+----------------+--------------------+--------------------+-------------------+------+-----+----+
-```
+
+
 
 ## Stock Market - Dataset
 This is a simple dataset that can be obtained from an [API](https://medium.com/@andy.m9627/the-ultimate-guide-to-stock-market-apis-for-2020-1de6f55adbb) and its simply stored in S3  as a comma separated value format. These datasets, one per company to be analyzed, tend to be quite small. Use it as a broadcast table is quite easy.
@@ -242,19 +236,25 @@ For this specific dataset the data was found [here](https://www.kaggle.com/boris
 
 There is no need for pre-processing of this data. Upon loading it to *Redshift* the company name can be added as a column such that it can be joined in the *Yelp* dataset on the `business_name`
 
-```
-Date,Open,High,Low,Close,Volume,OpenInt
-2012-03-02,22.05,26,22,24.58,17504991,0
-2012-03-05,24.86,24.86,20.9,20.99,2991210,0
-2012-03-06,19.83,20.5,19.36,20.5,1154290,0
-2012-03-07,20.49,20.63,19.95,20.25,387956,0
-2012-03-08,20.3,20.39,19.96,20,436871,0
-```
+
+|Date      |Open |High |Low  |Close|Volume  |OpenInt|
+|----------|-----|-----|-----|-----|--------|-------|
+|2012-03-02|22.05|26   |22   |24.58|17504991|0      |
+|2012-03-05|24.86|24.86|20.9 |20.99|2991210 |0      |
+|2012-03-06|19.83|20.5 |19.36|20.5 |1154290 |0      |
+|2012-03-07|20.49|20.63|19.95|20.25|387956  |0      |
+|2012-03-08|20.3 |20.39|19.96|20   |436871  |0      |
+
+
+**Note:** Business name must be added to the table when loaded to Redshift
 
 ## Airflow - Orchestrator
 Airflow will be used to orchestrate this data pipeline. This is an excellent tool for this sort of jobs, which involve multiple moving parts, with many componenents coming from different places. Airflow has the concept of the DAG, which is a sequential and independent succession of steps. Each task in this DAG will apply some sort of business logic on the data pipeline. 
 
 ### Dag Definition
+Below is shown the overall orchestration of ETL. Please, notice how elaborate are the relationships between the multiple tasks. This is due to the necessary order the operations need to occur at, due to the `Foreign Key` & `Primary Key` constraint relationship between the tables. 
+
+![Data Model](./yelpify_dag.png)
 
 
 ### Backfill
@@ -334,13 +334,14 @@ Table tip_fact as T {
   compliment_count bigint
 }
 
-Ref: B.business_id > T.business_id
-Ref: U.user_id > T.user_id
+Ref: T.business_id > B.business_id
+Ref: U.user_id < T.user_id
 Ref: B.city_id > C.city_id
-Ref: B.business_id > R.business_id
-Ref: U.user_id > R.user_id
+Ref: B.business_id < R.business_id
+Ref: U.user_id < R.user_id
 Ref: RF.review_id > R.review_id
-Ref: B.name > S.business_name
+Ref: B.name < S.business_name
+
 ```
 
 #### Database Diagram

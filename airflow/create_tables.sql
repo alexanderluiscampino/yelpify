@@ -1,83 +1,68 @@
-CREATE TABLE public.artists (
-	artistid varchar(256) NOT NULL,
-	name varchar(256),
-	location varchar(256),
-	lattitude numeric(18,0),
-	longitude numeric(18,0)
+CREATE TABLE "business_fact" (
+  "business_id" varchar PRIMARY KEY,
+  "name" varchar,
+  "categories" varchar,
+  "review_count" bigint,
+  "stars" count,
+  "city_id" varchar,
+  "address" varchar,
+  "postal_code" varchar
 );
 
-CREATE TABLE public.songplays (
-	playid varchar(32) NOT NULL,
-	start_time timestamp NOT NULL,
-	userid int4 NOT NULL,
-	"level" varchar(256),
-	songid varchar(256),
-	artistid varchar(256),
-	sessionid int4,
-	location varchar(256),
-	user_agent varchar(256),
-	CONSTRAINT songplays_pkey PRIMARY KEY (playid)
+CREATE TABLE "city_fact" (
+  "city_id" varchar PRIMARY KEY,
+  "state" varchar,
+  "city" varchar
 );
 
-CREATE TABLE public.songs (
-	songid varchar(256) NOT NULL,
-	title varchar(256),
-	artistid varchar(256),
-	"year" int4,
-	duration numeric(18,0),
-	CONSTRAINT songs_pkey PRIMARY KEY (songid)
+CREATE TABLE "users_fact" (
+  "user_id" varchar PRIMARY KEY,
+  "yelping_since" timestamp,
+  "name" varchar,
+  "average_stars" int,
+  "review_count" bigint
 );
 
-CREATE TABLE public.staging_events (
-	artist varchar(256),
-	auth varchar(256),
-	firstname varchar(256),
-	gender varchar(256),
-	iteminsession int4,
-	lastname varchar(256),
-	length numeric(18,0),
-	"level" varchar(256),
-	location varchar(256),
-	"method" varchar(256),
-	page varchar(256),
-	registration numeric(18,0),
-	sessionid int4,
-	song varchar(256),
-	status int4,
-	ts int8,
-	useragent varchar(256),
-	userid int4
+CREATE TABLE "review_dim" (
+  "review_id" varchar PRIMARY KEY,
+  "review_date" timestamp,
+  "business_id" varchar,
+  "user_id" varchar
 );
 
-CREATE TABLE public.staging_songs (
-	num_songs int4,
-	artist_id varchar(256),
-	artist_name varchar(256),
-	artist_latitude numeric(18,0),
-	artist_longitude numeric(18,0),
-	artist_location varchar(256),
-	song_id varchar(256),
-	title varchar(256),
-	duration numeric(18,0),
-	"year" int4
+CREATE TABLE "review_fact" (
+  "review_id" varchar PRIMARY KEY,
+  "stars" int,
+  "text" varchar
 );
 
-CREATE TABLE public."time" (
-	start_time timestamp NOT NULL,
-	"hour" int4,
-	"day" int4,
-	week int4,
-	"month" varchar(256),
-	"year" int4,
-	weekday varchar(256),
-	CONSTRAINT time_pkey PRIMARY KEY (start_time)
-) ;
-
-CREATE TABLE public.users (
-	userid int4 NOT NULL,
-	first_name varchar(256),
-	last_name varchar(256),
-	gender varchar(256),
-	"level" varchar(256),
-	CONSTRAINT users_pkey PRIMARY KEY (userid)
+CREATE TABLE "stock_fact" (
+  "stock_id" varchar PRIMARY KEY,
+  "business_name" varchar,
+  "date" timestamp,
+  "close_value" float
 );
+
+CREATE TABLE "tip_fact" (
+  "tip_id" varchar PRIMARY KEY,
+  "business_id" varchar,
+  "user_id" varchar,
+  "text" varchar,
+  "tip_date" timestamp,
+  "compliment_count" bigint
+);
+
+ALTER TABLE "tip_fact" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
+
+ALTER TABLE "tip_fact" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
+
+ALTER TABLE "business_fact" ADD FOREIGN KEY ("city_id") REFERENCES "city_fact" ("city_id");
+
+ALTER TABLE "review_dim" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
+
+ALTER TABLE "review_dim" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
+
+ALTER TABLE "review_fact" ADD FOREIGN KEY ("review_id") REFERENCES "review_dim" ("review_id");
+
+ALTER TABLE "stock_fact" ADD FOREIGN KEY ("business_name") REFERENCES "business_fact" ("name");
+
