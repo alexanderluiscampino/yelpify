@@ -12,7 +12,7 @@ The following techologies shall be used for this pipeline:
 
 Let's address the following 3 future *what if* scenarios:
 * **The data was increased by 100x**
-    * This will not pose any problem, since S3 scalability is tremendous. Due to its object store capabilities, storing 1gb or 100gb of data will incurr in the same access speed and performance. Will one increase its costs. Likewise, the data backing up the *Redshift* cluster will also not suffer with its increase, since more storage space can be added to the cluster on demand and as needed. The only factor to consider is cost of such operations
+    * This will not pose any problem, since S3 scalability is tremendous. Due to its object store capabilities, storing 1gb or 100gb of data will incur in the same access speed and performance. Will only increase its costs. Likewise, the data backing up the *Redshift* cluster will also not suffer with its increase, since more storage space can be added to the cluster on demand and as needed. The only factor to consider is cost of such operations
 * **The pipelines would be run on a daily basis by 7 am every day**
     * This is as easy as it gets by setting the frequency of *Airflow* to run daily. Furthermore, they way the pipeline is set-up, it will only be run on the daily subset of the data, which is extremely reduced. That will allow for a very performant pipeline run.
 * **The database needed to be accessed by 100| people**

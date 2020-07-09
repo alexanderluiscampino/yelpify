@@ -1,55 +1,80 @@
-class SqlQueries:
+from enum import Enum, unique
+
+
+@unique
+class SqlQueries(Enum):
+
+    setup_foreign_keys = ("""
+    ALTER TABLE "tip_fact" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
+    ALTER TABLE "tip_fact" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
+    ALTER TABLE "business_fact" ADD FOREIGN KEY ("city_id") REFERENCES "city_fact" ("city_id");
+    ALTER TABLE "review_dim" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
+    ALTER TABLE "review_dim" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
+    ALTER TABLE "review_fact" ADD FOREIGN KEY ("review_id") REFERENCES "review_dim" ("review_id");
+    ALTER TABLE "stock_fact" ADD FOREIGN KEY ("business_name") REFERENCES "business_fact" ("name");
+    """)
 
     business_fact_create = ("""
-        CREATE TABLE "business_fact" (
+        DROP TABLE IF EXISTS business_fact;
+        CREATE TABLE IF NOT EXISTS "business_fact" (
         "business_id" varchar PRIMARY KEY,
         "name" varchar,
-        "categories" varchar,
+        "categories" varchar(MAX),
         "review_count" bigint,
-        "stars" count,
+        "stars" float,
         "city_id" varchar,
-        "address" varchar,
+        "address" varchar(MAX),
         "postal_code" varchar
         );
+
     """)
 
     city_fact_create = ("""
-        CREATE TABLE "city_fact" (
+        DROP TABLE IF EXISTS city_fact;
+        CREATE TABLE IF NOT EXISTS "city_fact" (
         "city_id" varchar PRIMARY KEY,
         "state" varchar,
         "city" varchar
         );
+
     """)
 
     users_fact_create = ("""
-        CREATE TABLE "users_fact" (
+        DROP TABLE IF EXISTS users_fact;
+        CREATE TABLE IF NOT EXISTS "users_fact" (
         "user_id" varchar PRIMARY KEY,
         "yelping_since" timestamp,
         "name" varchar,
-        "average_stars" int,
+        "average_stars" float,
         "review_count" bigint
-        )
+        );
+
     """)
 
     review_dim_create = ("""
-        CREATE TABLE "review_dim" (
+        DROP TABLE IF EXISTS review_dim;
+        CREATE TABLE IF NOT EXISTS "review_dim" (
         "review_id" varchar PRIMARY KEY,
         "review_date" timestamp,
         "business_id" varchar,
         "user_id" varchar
         );
+
     """)
 
     review_fact_create = ("""
-        CREATE TABLE "review_fact" (
+        DROP TABLE IF EXISTS review_fact;
+        CREATE TABLE IF NOT EXISTS "review_fact" (
         "review_id" varchar PRIMARY KEY,
         "stars" int,
-        "text" varchar
+        "text" varchar(MAX)
         );
+
     """)
 
     stock_fact_create = ("""
-        CREATE TABLE "stock_fact" (
+        DROP TABLE IF EXISTS stock_fact;
+        CREATE TABLE IF NOT EXISTS "stock_fact" (
         "stock_id" varchar PRIMARY KEY,
         "business_name" varchar,
         "date" timestamp,
@@ -58,53 +83,60 @@ class SqlQueries:
     """)
 
     tip_fact_create = ("""
-        CREATE TABLE "tip_fact" (
+        DROP TABLE IF EXISTS tip_fact;
+        CREATE TABLE IF NOT EXISTS "tip_fact" (
         "tip_id" varchar PRIMARY KEY,
         "business_id" varchar,
         "user_id" varchar,
-        "text" varchar,
+        "text" varchar(MAX),
         "tip_date" timestamp,
         "compliment_count" bigint
         );
+
     """)
 
     review_stage_create = ("""
-        CREATE TABLE "review_staging" (
-        "business_id" varchar
+        DROP TABLE IF EXISTS review_staging;
+        CREATE TABLE IF NOT EXISTS "review_staging" (
+        "business_id" varchar,
         "cool" bigint,
         "funny" bigint,
         "review_id" varchar,
-        "stars" double,
-        "text" varchar,
+        "stars" float,
+        "text" varchar(MAX),
         "useful" bigint,
-        "user_id" string,
+        "user_id" varchar,
         "dt" varchar
         );
     """)
     business_stage_create = ("""
-        CREATE TABLE "business_staging" (
+        DROP TABLE IF EXISTS business_staging;
+        CREATE TABLE IF NOT EXISTS "business_staging" (
         "business_id" varchar,
-        "categories" varchar,
+        "name" varchar,
+        "categories" varchar(MAX),
         "state" varchar,
         "city" varchar,
-        "address" varchar,
-        "postal_code" string,
+        "address" varchar(MAX),
+        "postal_code" varchar,
         "review_count" bigint,
-        "stars" double
+        "stars" float
         );
     """)
     tip_stage_create = ("""
-        CREATE TABLE "tip_staging" (
+        DROP TABLE IF EXISTS tip_staging;
+        CREATE TABLE IF NOT EXISTS "tip_staging" (
         "business_id" varchar,
         "compliment_count" bigint,
-        "text" varchar,
+        "text" varchar(MAX),
         "user_id" varchar,
         "dt" varchar
         );
     """)
     users_stage_create = ("""
-        CREATE TABLE "users_staging" (
-        "average_stars" varchar 
+        DROP TABLE IF EXISTS users_staging;
+        CREATE TABLE IF NOT EXISTS "users_staging" (
+        "average_stars" float,
         "compliment_cool" bigint,
         "compliment_cute" bigint,
         "compliment_funny" bigint,
@@ -119,7 +151,7 @@ class SqlQueries:
         "cool" bigint,
         "elite" varchar,
         "fans" bigint,
-        "friends" varchar,
+        "friends" varchar(MAX),
         "funny" bigint,
         "name" varchar,
         "review_count" bigint,
@@ -130,18 +162,19 @@ class SqlQueries:
     """)
 
     stock_stage_create = ("""
-        CREATE TABLE "stock_staging" (
+        DROP TABLE IF EXISTS stock_staging;
+        CREATE TABLE IF NOT EXISTS "stock_staging" (
         "Date" varchar,
-        "Open" double,
-        "High" double,
-        "Low" double,
-        "Close" double,
+        "Open" float,
+        "High" float,
+        "Low" float,
+        "Close" float,
         "Volume" bigint,
         "OpenInt" bigint
         );
     """)
 
-    users_fact_table_insert = ("""
+    users_fact_insert = ("""
         INSERT INTO users_fact (
             user_id,
             yelping_since,
@@ -158,7 +191,7 @@ class SqlQueries:
         FROM users_staging
     """)
 
-    business_fact_table_insert = ("""
+    business_fact_insert = ("""
         INSERT INTO business_fact (
             business_id,
             name,
@@ -182,7 +215,7 @@ class SqlQueries:
         LEFT JOIN city_fact b ON a.city = b.city AND a.state = b.state
     """)
 
-    city_fact_table_insert = ("""
+    city_fact_insert = ("""
         INSERT INTO city_fact (
             city_id,
             state,
@@ -195,7 +228,7 @@ class SqlQueries:
         FROM business_staging
     """)
 
-    review_dim_table_insert = ("""
+    review_dim_insert = ("""
         INSERT INTO review_dim (
             review_id,
             review_date,
@@ -210,7 +243,7 @@ class SqlQueries:
         FROM review_staging
     """)
 
-    review_fact_table_insert = ("""
+    review_fact_insert = ("""
         INSERT INTO review_fact (
             review_id,
             stars,
@@ -223,7 +256,7 @@ class SqlQueries:
         FROM review_staging
     """)
 
-    tip_fact_table_insert = ("""
+    tip_fact_insert = ("""
         INSERT INTO tip_fact (
             tip_id,
             business_id,
@@ -242,7 +275,7 @@ class SqlQueries:
         FROM tip_staging
     """)
 
-    stock_fact_table_insert = ("""
+    stock_fact_insert = ("""
         INSERT INTO stock_fact (
             stock_id,
             business_name,
