@@ -20,7 +20,8 @@ class StageToRedshiftOperator(BaseOperator):
         FROM '{S3_URI}'
         ACCESS_KEY_ID '{ACCESS_ID}'
         SECRET_ACCESS_KEY '{ACCESS_KEY}'
-        csv;
+        CSV
+        IGNOREHEADER 1;
     """
 
     copy_json = """

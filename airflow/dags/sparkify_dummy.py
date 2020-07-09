@@ -39,23 +39,17 @@ class Table(Enum):
     def get_table_name(self, table_type: TableType):
         return f"{self.name}_{table_type.value}"
 
-    def get_partitions(self):
-        return {
-            self.USERS: {'YEAR': 2004, 'MONTH': 10, 'DAY': 12},
-            self.REVIEW: {'YEAR': 2005, 'MONTH': 3, 'DAY': 3},
-            self.TIP: {'YEAR': 2009, 'MONTH': 12, 'DAY': 15}
-        }.get(self)
+    def get_s3_path(self, partitioned=False):
+        if not partitioned:
+            if self == self.STOCK:
+                return "s3://yelp-customer-reviews/stock-data/chipotle.csv"
+            else:
+                return f"s3://yelp-customer-reviews/processed/{self.value}/".replace('users', 'user')
 
-    def get_s3_path(self):
-        if self == self.BUSINESS:
-            return "s3://yelp-customer-reviews/processed/business/"
-        elif self == self.STOCK:
-            return "s3://yelp-customer-reviews/stock-data/cmg.us.txt"
         else:
             path = f"s3://yelp-customer-reviews/data-lake/{self.value}".replace(
                 'users', 'user')
-            path = path + "/pyear={YEAR}/pmonth={MONTH}/pday={DAY}"
-            return path.format(**self.get_partitions())
+            return path + "/pyear={YEAR}/pmonth={MONTH}/pday={DAY}"
 
 
 default_args = {
@@ -78,7 +72,6 @@ dag = DAG('sparkify',
 setup_database_dict = {}
 setup_database_dict = {
     query.name: query.value for query in SqlQueries if ('create' in query.name)
-
 }
 # setup_database_dict[SqlQueries.setup_foreign_keys.name] = SqlQueries.setup_foreign_keys.value
 
@@ -101,30 +94,61 @@ stage_business_to_redshift = StageToRedshiftOperator(
     iam_role='arn:aws:iam::500349149336:role/dwhRole',
     target_table=Table.BUSINESS.get_table_name(TableType.STAGE),
     s3_path=Table.BUSINESS.get_s3_path(),
-    json_path=None,
     use_partitioned_data=False,
     data_type=Table.BUSINESS.get_data_type(),
+    provide_context=True
+)
+
+stage_review_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_review_data',
+    dag=dag,
+    redshift_conn_id="redshift",
+    aws_credentials_id="aws_credentials",
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.REVIEW.get_table_name(TableType.STAGE),
+    s3_path=Table.REVIEW.get_s3_path(),
+    json_path=None,
+    use_partitioned_data=False,
+    data_type=Table.REVIEW.get_data_type(),
     provide_context=True
 
 )
 
-stage_review_to_redshift = DummyOperator(
-    task_id='Stage_review_data',
-    dag=dag
-)
-
-stage_users_to_redshift = DummyOperator(
+stage_users_to_redshift = StageToRedshiftOperator(
     task_id='Stage_users_data',
+    redshift_conn_id="redshift",
+    aws_credentials_id="aws_credentials",
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.USERS.get_table_name(TableType.STAGE),
+    s3_path=Table.USERS.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.USERS.get_data_type(),
+    provide_context=True,
     dag=dag
 )
 
-stage_tip_to_redshift = DummyOperator(
+stage_tip_to_redshift = StageToRedshiftOperator(
     task_id='Stage_tip_data',
+    redshift_conn_id="redshift",
+    aws_credentials_id="aws_credentials",
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.TIP.get_table_name(TableType.STAGE),
+    s3_path=Table.TIP.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.TIP.get_data_type(),
+    provide_context=True,
     dag=dag
 )
 
-stage_stock_to_redshift = DummyOperator(
+stage_stock_to_redshift = StageToRedshiftOperator(
     task_id='Stage_stock_data',
+    redshift_conn_id="redshift",
+    aws_credentials_id="aws_credentials",
+    target_table=Table.STOCK.get_table_name(TableType.STAGE),
+    s3_path=Table.STOCK.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.STOCK.get_data_type(),
+    provide_context=True,
     dag=dag
 )
 

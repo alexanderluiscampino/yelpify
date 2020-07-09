@@ -42,7 +42,7 @@ class SqlQueries(Enum):
     users_fact_create = ("""
         DROP TABLE IF EXISTS users_fact;
         CREATE TABLE IF NOT EXISTS "users_fact" (
-        "user_id" varchar PRIMARY KEY,
+        "user_id" varchar(MAX) PRIMARY KEY,
         "yelping_since" timestamp,
         "name" varchar,
         "average_stars" float,
@@ -54,9 +54,9 @@ class SqlQueries(Enum):
     review_dim_create = ("""
         DROP TABLE IF EXISTS review_dim;
         CREATE TABLE IF NOT EXISTS "review_dim" (
-        "review_id" varchar PRIMARY KEY,
+        "review_id" varchar(MAX) PRIMARY KEY,
         "review_date" timestamp,
-        "business_id" varchar,
+        "business_id" varchar(MAX),
         "user_id" varchar
         );
 
@@ -66,7 +66,7 @@ class SqlQueries(Enum):
         DROP TABLE IF EXISTS review_fact;
         CREATE TABLE IF NOT EXISTS "review_fact" (
         "review_id" varchar PRIMARY KEY,
-        "stars" int,
+        "stars" float,
         "text" varchar(MAX)
         );
 
@@ -85,9 +85,9 @@ class SqlQueries(Enum):
     tip_fact_create = ("""
         DROP TABLE IF EXISTS tip_fact;
         CREATE TABLE IF NOT EXISTS "tip_fact" (
-        "tip_id" varchar PRIMARY KEY,
-        "business_id" varchar,
-        "user_id" varchar,
+        "tip_id" varchar(MAX) PRIMARY KEY,
+        "business_id" varchar(MAX),
+        "user_id" varchar(MAX),
         "text" varchar(MAX),
         "tip_date" timestamp,
         "compliment_count" bigint
@@ -98,21 +98,18 @@ class SqlQueries(Enum):
     review_stage_create = ("""
         DROP TABLE IF EXISTS review_staging;
         CREATE TABLE IF NOT EXISTS "review_staging" (
-        "business_id" varchar,
-        "cool" bigint,
-        "funny" bigint,
+        "business_id" varchar(MAX),
         "review_id" varchar,
-        "stars" float,
+        "stars" varchar,
         "text" varchar(MAX),
-        "useful" bigint,
-        "user_id" varchar,
-        "dt" varchar
+        "user_id" varchar(MAX),
+        "date" varchar
         );
     """)
     business_stage_create = ("""
         DROP TABLE IF EXISTS business_staging;
         CREATE TABLE IF NOT EXISTS "business_staging" (
-        "business_id" varchar,
+        "business_id" varchar(MAX),
         "name" varchar,
         "categories" varchar(MAX),
         "state" varchar,
@@ -126,36 +123,19 @@ class SqlQueries(Enum):
     tip_stage_create = ("""
         DROP TABLE IF EXISTS tip_staging;
         CREATE TABLE IF NOT EXISTS "tip_staging" (
-        "business_id" varchar,
+        "business_id" varchar(MAX),
         "compliment_count" bigint,
         "text" varchar(MAX),
-        "user_id" varchar,
-        "dt" varchar
+        "user_id" varchar(MAX),
+        "date" varchar
         );
     """)
     users_stage_create = ("""
         DROP TABLE IF EXISTS users_staging;
         CREATE TABLE IF NOT EXISTS "users_staging" (
         "average_stars" float,
-        "compliment_cool" bigint,
-        "compliment_cute" bigint,
-        "compliment_funny" bigint,
-        "compliment_hot" bigint,
-        "compliment_list" bigint,
-        "compliment_more" bigint,
-        "compliment_note" bigint,
-        "compliment_photos" bigint,
-        "compliment_plain" bigint,
-        "compliment_profile" bigint,
-        "compliment_writer" bigint,
-        "cool" bigint,
-        "elite" varchar,
-        "fans" bigint,
-        "friends" varchar(MAX),
-        "funny" bigint,
         "name" varchar,
         "review_count" bigint,
-        "useful" bigint,
         "user_id" varchar,
         "yelping_since" varchar
         );
@@ -237,7 +217,7 @@ class SqlQueries(Enum):
             )
         SELECT distinct
             review_id,
-            CAST(dt as timestamp) AS review_date,
+            CAST(date as timestamp) AS review_date,
             business_id,
             user_id
         FROM review_staging
@@ -246,7 +226,7 @@ class SqlQueries(Enum):
     review_fact_insert = ("""
         INSERT INTO review_fact (
             review_id,
-            stars,
+            CAST(stars AS BIGINT) AS stars,
             text
             )
         SELECT distinct
@@ -270,7 +250,7 @@ class SqlQueries(Enum):
             business_id,
             user_id,
             text,
-            CAST(dt as timestamp) AS tip_date,
+            CAST(date as timestamp) AS tip_date,
             compliment_count
         FROM tip_staging
     """)

@@ -20,7 +20,6 @@ class LoadFactOperator(BaseOperator):
 
         self.redshift_conn_id = redshift_conn_id
         self.target_table = target_table
-        self.create_table_query = create_table_query
         self.insert_table_query = insert_table_query
         self.append_only = append_only
 
@@ -29,10 +28,11 @@ class LoadFactOperator(BaseOperator):
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
         self.log.info("Redshift Connection Established")
 
-        self.log.info(
-            f"Creating Target Table If Not Exists: {self.target_table}"
-        )
-        redshift.run(self.create_table_query)
+        if self.create_table_query:
+            self.log.info(
+                f"Creating Target Table If Not Exists: {self.target_table}"
+            )
+            redshift.run(self.create_table_query)
 
         if not self.append_only:
             self.log.warning(f"Deleting Data From: {self.target_table}")
