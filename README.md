@@ -149,6 +149,8 @@ In totality, these datasets occupy roughly 7gb of storage space. There are milli
 In order to get these giants datasets a little bit more digestible for Redshift, we will proceed with some cleansing of the data in S3. This will involve dropping all not useful columns for our purpose. We will be using PySpark on a EMR cluster to achieve our goal. In the process, we will be outputting the files in Parquet format (Snappy compression). Redshift [can copy](https://aws.amazon.com/about-aws/whats-new/2018/06/amazon-redshift-can-now-copy-from-parquet-and-orc-file-formats/#:~:text=Amazon%20Redshift%20Can%20Now%20COPY%20from%20Parquet%20and%20ORC%20File%20Formats,-Posted%20On%3A%20Jun&text=You%20can%20now%20COPY%20Apache,more%20efficiently%20and%20cost%2Deffectively.) data in these formats straight from S3. This will be useful since compressed data takes way less storage space and parqut columnar format is extremely efficient in data retrieval.
 On top of this, we will also output data to a data-lake, where each dataset will be stored in S3, efficiently partioned. This data lake can be used by all sorts of purposes in the future.
 
+Running the pre-processing is a one-time-deal, since these datasets are static in nature. Although, its easy to setup a trigger on AWS if new files are dropped to a S3 bucket staging area, which then starts and EMR machine and runs this Spark Job. This [link](https://medium.com/@tamizhgeek/remote-spark-submit-toyarn-running-on-emr-9804b89d82d2) provides clear instructions on how to submit such job. [Here](https://airflow.readthedocs.io/en/latest/howto/operator/apache/spark.html#sparksubmitoperator) is how to use a Airflow Operator to run such submit job. Setting up such mechanisms is outside of the scope of this project.
+
 ### Checkin
 This dataset will be ignored all together since it does not offer any value for our analysis goal
 
@@ -197,7 +199,7 @@ Additionally, the data lake will have the following partitions:
 This is ultimately the most important dataset. It sores all the review made by clients on the respective establishments. 
 It will link to the business and user table via their foreign keys `business_id` and `user_id`. 
 Correctly setting up this data in S3 is crucial. This is the largest dataset and the one that is going to get sequentially incremented as users use the app. For the correct performance of our app, ingesting the full dataset into *Redshift* every time is non-sensical due to its shear size. 
-This is where *Airflow* shines with its concept of backfill, which will be furhet explained in the following sections. For now, this dataset will be processed. All its columns will be kept and the data will be written to S3 paritioned by the `year, month, day` of the review. 
+This is where *Airflow* shines with its concept of backfill, which will be furhet explained in the following sections. For now, this dataset will be processed. All its columns will be kept and the data will be written to S3 partitioned by the `year, month, day` of the review. 
 
 Partitions:
 - pyear
@@ -259,6 +261,13 @@ Below is shown the overall orchestration of ETL. Please, notice how elaborate ar
 
 ![Data Model](./yelpify_dag.png)
 
+The very final Task is to perform some very basic data quality checks. Here we kept it simple since our only mission was to move the data from S3 to a data warehouse format, so we only count the number of records inserted into the table and make sure the are `>0`. In the furture, as downstream users utilize this data warehouse more elaborate checks can be put in place to respond to their needs.
+
+Quality checks are run for the following list of tables `['business_fact', 'city_fact', 'review_fact', 'tip_fact', 'users_fact', 'stock_fact', 'review_dim']`.
+
+A single message is outputted to the logs, `INFO - business_fact has passed data quality check with 1002 records`. This message can be broadcasted elsewhere downstream for better communication. Using the [Slack Airflow](https://airflow.apache.org/docs/stable/_modules/airflow/operators/slack_operator.html) operator is a great way of giving real time feedback to end users of data freshness, availibility or alert the data engineer for any pipeline errors. Such can easily be implemented in this pipeline for a feature enhancement.
+
+
 
 ### Backfill
 One of the most acclaimed concepts of *Airflow* is the backfill. This allows for a pipeline that was engineered today, run on data that was generated in the past. Let's imagine that our app generates a certain amount of data everyday, which needs to be processed and put in our *Redshift* cluster. The pipeline should not run on the full dataset everytime it runs, for performance reasons and also redundancy. If all these datasets, which can be split by day, have the same format, our pipeline can run on them on day-per-day basis. This allows for short runs our data pipeline is manageable and digestible pieces of the data. In turn, we can run a pipeline created today and add in the start date parameter to be sometime in the past ( e.g. 3 years ago) alongside the frequency our pipeline should be run(e.g. daily). Airflow will than create runs for all the dates from the start data until today. Within the DAG itself the code will have access to the timestamp parameter and can then use it to select the correct dataset from S3
@@ -273,6 +282,9 @@ A Cluster will be spun-up with the following characteristics:
 A snowflake model will be used. This makes it very easy to access data for any sort of downstream user, such as a Analyst, ML engineer, business reviewer, etc. Luckily, the dataset we got is already quite there when it comes to snowflake model, we just need to make small adjustements. 
 
 We are going to use the review as our dimension table with 6 supporting fact tables. Additionally, we are going to split the data that comes from the review original dataset into facts and dimensions. 
+
+
+**Observation:** Be aware that the column order matters. Whichever order one has on the parquet or csv files needs to be maintained when copied into Redshift using the `COPY` command. Same applies for the `INSERT INTO SELECT` statements, the order of the source must match the order in the target. 
 
 #### Data Dictionary
 
@@ -352,5 +364,3 @@ Ref: B.name < S.business_name
 
 ![Data Model](./yelpify_dbd.png)
 
-## Retrospective
-This dataset caused major issues on loading to the DB due to the lack of cleansing. ID fields werent's same length through out. Some had 18 chars some had 1000s. This caused major development problems from which not much can be learned. It would have been better to work on an already clean dataset, such that full focus and effort goes into data pipelines and not into cleaning and figuring out weird errors.
