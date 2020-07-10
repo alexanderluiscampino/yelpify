@@ -99,11 +99,11 @@ class SqlQueries(Enum):
         DROP TABLE IF EXISTS review_staging;
         CREATE TABLE IF NOT EXISTS "review_staging" (
         "business_id" varchar(MAX),
+        "date" varchar,
         "review_id" varchar,
         "stars" varchar,
         "text" varchar(MAX),
-        "user_id" varchar(MAX),
-        "date" varchar
+        "user_id" varchar(MAX)
         );
     """)
     business_stage_create = ("""
@@ -125,9 +125,9 @@ class SqlQueries(Enum):
         CREATE TABLE IF NOT EXISTS "tip_staging" (
         "business_id" varchar(MAX),
         "compliment_count" bigint,
+        "date" varchar,
         "text" varchar(MAX),
-        "user_id" varchar(MAX),
-        "date" varchar
+        "user_id" varchar(MAX)
         );
     """)
     users_stage_create = ("""
@@ -162,7 +162,7 @@ class SqlQueries(Enum):
             average_stars,
             review_count
             )
-        SELECT distinct 
+        SELECT distinct
             user_id, 
             CAST(yelping_since as timestamp) AS yelping_since,
             name, 
@@ -226,12 +226,12 @@ class SqlQueries(Enum):
     review_fact_insert = ("""
         INSERT INTO review_fact (
             review_id,
-            CAST(stars AS BIGINT) AS stars,
+            stars,
             text
             )
         SELECT distinct
             review_id,
-            stars,
+            CAST(stars AS BIGINT) AS stars,
             text
         FROM review_staging
     """)
@@ -246,7 +246,7 @@ class SqlQueries(Enum):
             compliment_count
             )
         SELECT distinct
-            md5(business_id || user_id || tip_date)  tip_id,
+            md5(business_id || user_id || date)  tip_id,
             business_id,
             user_id,
             text,
