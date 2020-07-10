@@ -1,27 +1,59 @@
-from enum import Enum, unique
-import boto3
-from datetime import datetime, timedelta
+import json
+import logging
 import os
+from enum import Enum, unique
+from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.models import Variable
+from airflow.operators import (DataQualityOperator,
+                               LoadOperator, StageToRedshiftOperator,
+                               PostgresOperator, SetupDatabaseOperator)
+
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.operators import (StageToRedshiftOperator, LoadFactOperator,
-                               LoadDimensionOperator, DataQualityOperator)
 from helpers import SqlQueries
 
 
 @unique
-class Table(Enum):
-    ARTISTS = 'artists'
-    SONGPLAYS = 'songplays'
-    SONGS = 'songs'
-    STAGING_EVENTS = 'staging_events'
-    STAGING_SONGS = 'staging_songs'
-    TIME = 'time'
-    USERS = 'users'
+class TableType(Enum):
+    FACT = 'fact'
+    DIM = 'dim'
+    STAGE = 'staging'
 
-    def get_query(self, query_type: str):
-        return getattr(SqlQueries, f"{self.value}_table_{query_type}", None)
+
+@unique
+class Table(Enum):
+    BUSINESS = 'business'
+    CITY = 'city'
+    REVIEW = 'review'
+    TIP = 'tip'
+    USERS = 'users'
+    STOCK = 'stock'
+
+    def get_data_type(self):
+        if self == self.STOCK:
+            return 'csv'
+        else:
+            return 'parquet'
+
+    def get_insert_query(self, table_type: TableType):
+        attribute = f"{self.get_table_name(table_type)}_insert"
+        return getattr(SqlQueries, attribute).value
+
+    def get_table_name(self, table_type: TableType):
+        return f"{self.value}_{table_type.value}"
+
+    def get_s3_path(self, partitioned=False):
+        if not partitioned:
+            if self == self.STOCK:
+                return "s3://yelp-customer-reviews/stock-data/chipotle.csv"
+            else:
+                return f"s3://yelp-customer-reviews/processed/{self.value}/".replace('users', 'user')
+
+        else:
+            path = f"s3://yelp-customer-reviews/data-lake/{self.value}".replace(
+                'users', 'user')
+            return path + "/pyear={YEAR}/pmonth={MONTH}/pday={DAY}"
 
 
 default_args = {
@@ -34,121 +66,187 @@ default_args = {
     'email_on_retry': False
 }
 
-dag = DAG('sparkify',
+dag = DAG('yelpify',
           default_args=default_args,
+          catchup=False,
           description='Load and transform data in Redshift with Airflow',
-          schedule_interval=None  # '0 * * * *'
+          schedule_interval='0 * * * *'
           )
 
-start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
+setup_database_dict = {}
+setup_database_dict = {
+    query.name: query.value for query in SqlQueries if ('create' in query.name)
+}
+# setup_database_dict[SqlQueries.setup_foreign_keys.name] = SqlQueries.setup_foreign_keys.value
 
-stage_events_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_events',
+
+start_operator = DummyOperator(
+    task_id='Begin_execution',
+    dag=dag
+)
+setup_database = SetupDatabaseOperator(
+    task_id='Setup_database',
+    list_of_queries=setup_database_dict,
+    dag=dag
+)
+
+stage_business_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_business_data',
     dag=dag,
     redshift_conn_id="redshift",
     aws_credentials_id="aws_credentials",
-    target_table=Table.STAGING_EVENTS.value,
-    create_table_query=Table.STAGING_EVENTS.get_query('create'),
-    s3_path=Variable.get("EVENTS_DATA_PATH"),
-    json_path=Variable.get("EVENTS_JSONPATH", default_var=None),
-    use_partitioned_data=Variable.get(
-        "EVENTS_DATA_PARTITIONED", default_var=False),
-    provide_context=False
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.BUSINESS.get_table_name(TableType.STAGE),
+    s3_path=Table.BUSINESS.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.BUSINESS.get_data_type(),
+    provide_context=True
 )
 
-
-stage_songs_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_songs',
+stage_review_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_review_data',
     dag=dag,
     redshift_conn_id="redshift",
     aws_credentials_id="aws_credentials",
-    target_table=Table.STAGING_SONGS.value,
-    create_table_query=Table.STAGING_SONGS.get_query('create'),
-    s3_path=Variable.get("SONGS_DATA_PATH"),
-    json_path=Variable.get("SONGS_JSONPATH", default_var=None),
-    use_partitioned_data=Variable.get(
-        "SONGS_DATA_PARTITIONED", default_var=False),
-    provide_context=False
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.REVIEW.get_table_name(TableType.STAGE),
+    s3_path=Table.REVIEW.get_s3_path(),
+    json_path=None,
+    use_partitioned_data=False,
+    data_type=Table.REVIEW.get_data_type(),
+    provide_context=True
+
 )
 
-
-fact_table_mode = True if Variable.get(
-    "INSERT_MODE_FACT", default_var=False) == "append" else False
-dimensional_table_mode = True if Variable.get(
-    "INSERT_MODE_DIM", default_var=False) == "append" else False
-
-
-load_songplays_table = LoadFactOperator(
-    task_id='Load_songplays_fact_table',
-    dag=dag,
+stage_users_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_users_data',
     redshift_conn_id="redshift",
-    target_table=Table.SONGPLAYS.value,
-    create_table_query=Table.SONGPLAYS.get_query('create'),
-    insert_table_query=Table.SONGPLAYS.get_query('insert'),
-    append_only=fact_table_mode,
-    provide_context=False
+    aws_credentials_id="aws_credentials",
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.USERS.get_table_name(TableType.STAGE),
+    s3_path=Table.USERS.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.USERS.get_data_type(),
+    provide_context=True,
+    dag=dag
 )
 
-load_user_dimension_table = LoadDimensionOperator(
-    task_id='Load_user_dim_table',
-    dag=dag,
+stage_tip_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_tip_data',
     redshift_conn_id="redshift",
-    target_table=Table.USERS.value,
-    create_table_query=Table.USERS.get_query('create'),
-    insert_table_query=Table.USERS.get_query('insert'),
-    append_only=fact_table_mode,
-    provide_context=False
-
+    aws_credentials_id="aws_credentials",
+    iam_role='arn:aws:iam::500349149336:role/dwhRole',
+    target_table=Table.TIP.get_table_name(TableType.STAGE),
+    s3_path=Table.TIP.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.TIP.get_data_type(),
+    provide_context=True,
+    dag=dag
 )
 
-load_song_dimension_table = LoadDimensionOperator(
-    task_id='Load_song_dim_table',
-    dag=dag,
+stage_stock_to_redshift = StageToRedshiftOperator(
+    task_id='Stage_stock_data',
     redshift_conn_id="redshift",
-    target_table=Table.SONGS.value,
-    create_table_query=Table.SONGS.get_query('create'),
-    insert_table_query=Table.SONGS.get_query('insert'),
-    append_only=fact_table_mode,
-    provide_context=False
+    aws_credentials_id="aws_credentials",
+    target_table=Table.STOCK.get_table_name(TableType.STAGE),
+    s3_path=Table.STOCK.get_s3_path(),
+    use_partitioned_data=False,
+    data_type=Table.STOCK.get_data_type(),
+    provide_context=True,
+    dag=dag
 )
 
-load_artist_dimension_table = LoadDimensionOperator(
-    task_id='Load_artist_dim_table',
-    dag=dag,
+
+process_tip_fact = LoadOperator(
+    task_id='Process_tip_fact',
     redshift_conn_id="redshift",
-    target_table=Table.ARTISTS.value,
-    create_table_query=Table.ARTISTS.get_query('create'),
-    insert_table_query=Table.ARTISTS.get_query('insert'),
-    append_only=fact_table_mode,
-    provide_context=False
+    target_table=Table.TIP.get_table_name(TableType.FACT),
+    insert_table_query=Table.TIP.get_insert_query(TableType.FACT),
+    dag=dag,
+    provide_context=True
 )
 
-load_time_dimension_table = LoadDimensionOperator(
-    task_id='Load_time_dim_table',
-    dag=dag,
+process_business_fact = LoadOperator(
+    task_id='Process_business_fact',
     redshift_conn_id="redshift",
-    target_table=Table.TIME.value,
-    create_table_query=Table.TIME.get_query('create'),
-    insert_table_query=Table.TIME.get_query('insert'),
-    append_only=fact_table_mode,
-    provide_context=False
+    target_table=Table.BUSINESS.get_table_name(TableType.FACT),
+    insert_table_query=Table.BUSINESS.get_insert_query(TableType.FACT),
+    dag=dag
 )
+
+process_city_fact = LoadOperator(
+    task_id='Process_city_fact',
+    redshift_conn_id="redshift",
+    target_table=Table.CITY.get_table_name(TableType.FACT),
+    insert_table_query=Table.CITY.get_insert_query(TableType.FACT),
+    dag=dag
+)
+
+process_stock_fact = LoadOperator(
+    task_id='Process_stock_fact',
+    redshift_conn_id="redshift",
+    target_table=Table.STOCK.get_table_name(TableType.FACT),
+    insert_table_query=Table.STOCK.get_insert_query(TableType.FACT),
+    dag=dag
+)
+
+process_review_fact = LoadOperator(
+    task_id='Process_review_fact',
+    redshift_conn_id="redshift",
+    target_table=Table.REVIEW.get_table_name(TableType.FACT),
+    insert_table_query=Table.REVIEW.get_insert_query(TableType.FACT),
+    dag=dag
+)
+
+process_users_fact = LoadOperator(
+    task_id='Process_users_fact',
+    redshift_conn_id="redshift",
+    target_table=Table.USERS.get_table_name(TableType.FACT),
+    insert_table_query=Table.USERS.get_insert_query(TableType.FACT),
+    dag=dag
+)
+
+process_review_dim = LoadOperator(
+    task_id='Process_review_dim',
+    redshift_conn_id="redshift",
+    target_table=Table.REVIEW.get_table_name(TableType.DIM),
+    insert_table_query=Table.REVIEW.get_insert_query(TableType.DIM),
+    dag=dag
+)
+
 
 run_quality_checks = DataQualityOperator(
     task_id='Run_data_quality_checks',
-    dag=dag,
-    redshift_conn_id="redshift",
-    list_of_tables=[entry.value for entry in Table]
+    list_of_table=[table.value for table in Table],
+    dag=dag
 )
 
 end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
+start_operator >> setup_database
+setup_database >> stage_business_to_redshift
+setup_database >> stage_review_to_redshift
+setup_database >> stage_users_to_redshift
+setup_database >> stage_tip_to_redshift
+setup_database >> stage_stock_to_redshift
 
-# Task dependencies
-start_operator >> stage_events_to_redshift >> load_songplays_table
-start_operator >> stage_songs_to_redshift >> load_songplays_table
-load_songplays_table >> load_user_dimension_table >> run_quality_checks
-load_songplays_table >> load_song_dimension_table >> run_quality_checks
-load_songplays_table >> load_artist_dimension_table >> run_quality_checks
-load_songplays_table >> load_time_dimension_table >> run_quality_checks
+
+stage_business_to_redshift >> process_city_fact
+stage_review_to_redshift >> process_review_dim
+stage_users_to_redshift >> process_users_fact
+stage_tip_to_redshift >> process_tip_fact
+stage_stock_to_redshift >> process_stock_fact
+
+process_city_fact >> process_business_fact
+process_business_fact >> process_stock_fact
+process_business_fact >> process_review_dim
+process_business_fact >> process_tip_fact
+process_users_fact >> process_tip_fact
+process_review_dim >> process_review_fact
+
+
+process_tip_fact >> run_quality_checks
+process_stock_fact >> run_quality_checks
+process_review_fact >> run_quality_checks
+
 run_quality_checks >> end_operator
