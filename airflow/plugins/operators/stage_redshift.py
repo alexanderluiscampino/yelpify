@@ -46,7 +46,6 @@ class StageToRedshiftOperator(BaseOperator):
                  use_partitioned_data=False,
                  truncate=False,
                  data_type='parquet',
-                 execution_date='',
                  *args, **kwargs):
 
         super(StageToRedshiftOperator, self).__init__(*args, **kwargs)
@@ -60,7 +59,7 @@ class StageToRedshiftOperator(BaseOperator):
         self.json_path = json_path
         self.truncate = truncate
         self.data_type = data_type
-        self.execution_date = kwargs.get('execution_date')
+
         self.use_partitioned_data = use_partitioned_data
         self.log.info(kwargs)
 
@@ -70,7 +69,7 @@ class StageToRedshiftOperator(BaseOperator):
         It can load PARQUET, JSON and CSV format files.
         Accepts data partitioned by dates, such as
             year=2010/month=11/day=2
-        Ideally for using backfil functionalities
+        Ideally for using backfil Airflow capabilities
         """
         credentials = AwsHook(self.aws_credentials_id).get_credentials()
         self.log.info("Creating Redshift Connection")
@@ -88,6 +87,7 @@ class StageToRedshiftOperator(BaseOperator):
             redshift.run(f"DELETE FROM {self.target_table}")
 
         # Backfill a specific date
+        self.execution_date = context.get('execution_date')
         if self.use_partitioned_data == 'true' and self.execution_date:
             data_s3_path = "{BASE_PATH}".format(
                 BASE_PATH=self.s3_path,
