@@ -4,18 +4,19 @@ from enum import Enum, unique
 @unique
 class SqlQueries(Enum):
 
-    setup_foreign_keys = ("""
-    ALTER TABLE "tip_fact" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
-    ALTER TABLE "tip_fact" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
-    ALTER TABLE "business_fact" ADD FOREIGN KEY ("city_id") REFERENCES "city_fact" ("city_id");
-    ALTER TABLE "review_dim" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");
-    ALTER TABLE "review_dim" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");
-    ALTER TABLE "review_fact" ADD FOREIGN KEY ("review_id") REFERENCES "review_dim" ("review_id");
-    ALTER TABLE "stock_fact" ADD FOREIGN KEY ("business_name") REFERENCES "business_fact" ("name");
-    """)
+    setup_foreign_keys = [
+        """ALTER TABLE "tip_fact" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");""",
+        """ALTER TABLE "tip_fact" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");""",
+        """ALTER TABLE "business_fact" ADD FOREIGN KEY ("city_id") REFERENCES "city_fact" ("city_id");""",
+        """ALTER TABLE "review_dim" ADD FOREIGN KEY ("business_id") REFERENCES "business_fact" ("business_id");""",
+        """ALTER TABLE "review_dim" ADD FOREIGN KEY ("user_id") REFERENCES "users_fact" ("user_id");""",
+        """ALTER TABLE "review_fact" ADD FOREIGN KEY ("review_id") REFERENCES "review_dim" ("review_id");""",
+        """ALTER TABLE "stock_fact" ADD FOREIGN KEY ("business_name") REFERENCES "business_fact" ("name");""",
+    ]
+
+    drop_table_statement = "DROP TABLE IF EXISTS {TABLE_NAME} cascade;"
 
     business_fact_create = ("""
-        DROP TABLE IF EXISTS business_fact;
         CREATE TABLE IF NOT EXISTS "business_fact" (
         "business_id" varchar PRIMARY KEY,
         "name" varchar,
@@ -30,7 +31,6 @@ class SqlQueries(Enum):
     """)
 
     city_fact_create = ("""
-        DROP TABLE IF EXISTS city_fact;
         CREATE TABLE IF NOT EXISTS "city_fact" (
         "city_id" varchar PRIMARY KEY,
         "state" varchar,
@@ -40,7 +40,6 @@ class SqlQueries(Enum):
     """)
 
     users_fact_create = ("""
-        DROP TABLE IF EXISTS users_fact;
         CREATE TABLE IF NOT EXISTS "users_fact" (
         "user_id" varchar(MAX) PRIMARY KEY,
         "yelping_since" timestamp,
@@ -52,7 +51,6 @@ class SqlQueries(Enum):
     """)
 
     review_dim_create = ("""
-        DROP TABLE IF EXISTS review_dim;
         CREATE TABLE IF NOT EXISTS "review_dim" (
         "review_id" varchar(MAX) PRIMARY KEY,
         "review_date" timestamp,
@@ -62,8 +60,7 @@ class SqlQueries(Enum):
 
     """)
 
-    review_fact_create = ("""
-        DROP TABLE IF EXISTS review_fact;
+    review_fact_create = ("""        
         CREATE TABLE IF NOT EXISTS "review_fact" (
         "review_id" varchar PRIMARY KEY,
         "stars" float,
@@ -73,7 +70,6 @@ class SqlQueries(Enum):
     """)
 
     stock_fact_create = ("""
-        DROP TABLE IF EXISTS stock_fact;
         CREATE TABLE IF NOT EXISTS "stock_fact" (
         "stock_id" varchar PRIMARY KEY,
         "business_name" varchar,
@@ -82,8 +78,7 @@ class SqlQueries(Enum):
         );
     """)
 
-    tip_fact_create = ("""
-        DROP TABLE IF EXISTS tip_fact;
+    tip_fact_create = ("""        
         CREATE TABLE IF NOT EXISTS "tip_fact" (
         "tip_id" varchar(MAX) PRIMARY KEY,
         "business_id" varchar(MAX),
@@ -95,8 +90,7 @@ class SqlQueries(Enum):
 
     """)
 
-    review_stage_create = ("""
-        DROP TABLE IF EXISTS review_staging;
+    review_stage_create = ("""        
         CREATE TABLE IF NOT EXISTS "review_staging" (
         "business_id" varchar(MAX),
         "date" varchar,
@@ -106,8 +100,8 @@ class SqlQueries(Enum):
         "user_id" varchar(MAX)
         );
     """)
+
     business_stage_create = ("""
-        DROP TABLE IF EXISTS business_staging;
         CREATE TABLE IF NOT EXISTS "business_staging" (
         "business_id" varchar(MAX),
         "name" varchar,
@@ -121,7 +115,6 @@ class SqlQueries(Enum):
         );
     """)
     tip_stage_create = ("""
-        DROP TABLE IF EXISTS tip_staging;
         CREATE TABLE IF NOT EXISTS "tip_staging" (
         "business_id" varchar(MAX),
         "compliment_count" bigint,
@@ -131,7 +124,6 @@ class SqlQueries(Enum):
         );
     """)
     users_stage_create = ("""
-        DROP TABLE IF EXISTS users_staging;
         CREATE TABLE IF NOT EXISTS "users_staging" (
         "average_stars" float,
         "name" varchar,
@@ -142,7 +134,6 @@ class SqlQueries(Enum):
     """)
 
     stock_stage_create = ("""
-        DROP TABLE IF EXISTS stock_staging;
         CREATE TABLE IF NOT EXISTS "stock_staging" (
         "Date" varchar,
         "Open" float,
