@@ -56,8 +56,25 @@ class Table(Enum):
             return path + "/pyear={YEAR}/pmonth={MONTH}/pday={DAY}"
 
 
-list_of_tables = [table.get_table_name(TableType.FACT) for table in Table]
-list_of_tables.append(Table.REVIEW.get_table_name(TableType.DIM))
+PARTITIONED = False
+DROP_ALL = True
+
+staging_tables = [table.get_table_name(TableType.STAGE) for table in Table]
+fact_tables = [table.get_table_name(TableType.FACT) for table in Table]
+dim_tables = [Table.REVIEW.get_table_name(TableType.DIM)]
+list_of_tables = fact_tables + dim_tables
+
+delete_tables = staging_tables+list_of_tables if DROP_ALL else staging_tables
+delete_statements = {
+    "drop_table": [SqlQueries.drop_table_statement.value.format(TABLE_NAME=table) for table in delete_tables]
+}
+delete_statements = {}
+setup_database_dict = {
+    query.name: query.value for query in SqlQueries if ('create' in query.name)
+}
+foreign_keys_setup = {
+    SqlQueries.setup_foreign_keys.name: SqlQueries.setup_foreign_keys.value
+}
 
 default_args = {
     'owner': 'alexandrec',
@@ -76,20 +93,20 @@ dag = DAG('yelpify',
           schedule_interval='0 * * * *'  # @daily
           )
 
-setup_database_dict = {}
-setup_database_dict = {
-    query.name: query.value for query in SqlQueries if ('create' in query.name)
-}
-# setup_database_dict[SqlQueries.setup_foreign_keys.name] = SqlQueries.setup_foreign_keys.value
-
-
 start_operator = DummyOperator(
     task_id='Begin_execution',
     dag=dag
 )
+
+drop_existing_tables = SetupDatabaseOperator(
+    task_id='Drop_existing_tables',
+    dict_of_queries=delete_statements,
+    dag=dag
+)
+
 setup_database = SetupDatabaseOperator(
     task_id='Setup_database',
-    list_of_queries=setup_database_dict,
+    dict_of_queries=setup_database_dict,
     dag=dag
 )
 
@@ -100,8 +117,8 @@ stage_business_to_redshift = StageToRedshiftOperator(
     aws_credentials_id="aws_credentials",
     iam_role='arn:aws:iam::500349149336:role/dwhRole',
     target_table=Table.BUSINESS.get_table_name(TableType.STAGE),
-    s3_path=Table.BUSINESS.get_s3_path(),
-    use_partitioned_data=False,
+    s3_path=Table.BUSINESS.get_s3_path(PARTITIONED),
+    use_partitioned_data=PARTITIONED,
     data_type=Table.BUSINESS.get_data_type(),
     provide_context=True
 )
@@ -113,9 +130,9 @@ stage_review_to_redshift = StageToRedshiftOperator(
     aws_credentials_id="aws_credentials",
     iam_role='arn:aws:iam::500349149336:role/dwhRole',
     target_table=Table.REVIEW.get_table_name(TableType.STAGE),
-    s3_path=Table.REVIEW.get_s3_path(),
+    s3_path=Table.REVIEW.get_s3_path(PARTITIONED),
     json_path=None,
-    use_partitioned_data=False,
+    use_partitioned_data=PARTITIONED,
     data_type=Table.REVIEW.get_data_type(),
     provide_context=True
 
@@ -127,8 +144,8 @@ stage_users_to_redshift = StageToRedshiftOperator(
     aws_credentials_id="aws_credentials",
     iam_role='arn:aws:iam::500349149336:role/dwhRole',
     target_table=Table.USERS.get_table_name(TableType.STAGE),
-    s3_path=Table.USERS.get_s3_path(),
-    use_partitioned_data=False,
+    s3_path=Table.USERS.get_s3_path(PARTITIONED),
+    use_partitioned_data=PARTITIONED,
     data_type=Table.USERS.get_data_type(),
     provide_context=True,
     dag=dag
@@ -140,8 +157,8 @@ stage_tip_to_redshift = StageToRedshiftOperator(
     aws_credentials_id="aws_credentials",
     iam_role='arn:aws:iam::500349149336:role/dwhRole',
     target_table=Table.TIP.get_table_name(TableType.STAGE),
-    s3_path=Table.TIP.get_s3_path(),
-    use_partitioned_data=False,
+    s3_path=Table.TIP.get_s3_path(PARTITIONED),
+    use_partitioned_data=PARTITIONED,
     data_type=Table.TIP.get_data_type(),
     provide_context=True,
     dag=dag
@@ -152,8 +169,8 @@ stage_stock_to_redshift = StageToRedshiftOperator(
     redshift_conn_id="redshift",
     aws_credentials_id="aws_credentials",
     target_table=Table.STOCK.get_table_name(TableType.STAGE),
-    s3_path=Table.STOCK.get_s3_path(),
-    use_partitioned_data=False,
+    s3_path=Table.STOCK.get_s3_path(PARTITIONED),
+    use_partitioned_data=PARTITIONED,
     data_type=Table.STOCK.get_data_type(),
     provide_context=True,
     dag=dag
@@ -225,10 +242,16 @@ run_quality_checks = DataQualityOperator(
     dag=dag
 )
 
+setup_foreign_key = SetupDatabaseOperator(
+    task_id='Setup_foreign_keys',
+    dict_of_queries=foreign_keys_setup,
+    dag=dag
+)
+
 end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
 
-start_operator >> setup_database
+start_operator >> drop_existing_tables >> setup_database
 
 setup_database >> stage_business_to_redshift
 setup_database >> stage_review_to_redshift
@@ -255,4 +278,4 @@ process_tip_fact >> run_quality_checks
 process_stock_fact >> run_quality_checks
 process_review_fact >> run_quality_checks
 
-run_quality_checks >> end_operator
+run_quality_checks >> setup_foreign_key >> end_operator
