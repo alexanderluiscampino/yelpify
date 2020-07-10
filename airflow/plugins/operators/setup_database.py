@@ -10,7 +10,7 @@ class SetupDatabaseOperator(BaseOperator):
     @apply_defaults
     def __init__(self,
                  redshift_conn_id="redshift",
-                 list_of_queries:dict=None,
+                 list_of_queries: dict = None,
                  *args,
                  **kwargs):
 
@@ -20,11 +20,14 @@ class SetupDatabaseOperator(BaseOperator):
         self.list_of_queries = list_of_queries if list_of_queries else {}
 
     def execute(self, context):
-   
+        """
+        Runs a batch of queries provided in the dictionarr format query_name:query_content
+
+        This operator ir normally used for set up databases, such as table and relationship creation
+        """
+
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
         for query_name, query in self.list_of_queries.items():
             self.log.info(f"Running Query: {query_name}")
             redshift.run(query)
             self.log.info(f"Finished Running Query {query_name}")
-            
-         
