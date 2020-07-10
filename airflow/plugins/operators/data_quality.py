@@ -19,14 +19,24 @@ class DataQualityOperator(BaseOperator):
         self.list_of_tables = list_of_tables
 
     def execute(self, context):
+        """
+        Runs data quality checks on the tables created
+
+        Checks Run:
+            length of records: there must be at least one record per table
+        """
         check_pass = True
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
+
+        self.log.info(
+            f"Initiating data quality checks for: {self.list_of_tables}")
+
         for table in self.list_of_tables:
             records = redshift.get_records(f"SELECT COUNT(*) FROM {table}")
             self.log.info(records)
             if len(records) < 1 or len(records[0]) < 1:
                 check_pass = False
-            else:    
+            else:
                 num_records = records[0][0]
 
                 if num_records == 0:
