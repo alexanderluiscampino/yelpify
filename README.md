@@ -29,6 +29,9 @@ These datasets can be found in [Kaggle](https://www.kaggle.com/yelp-dataset/yelp
 - `yelp_academic_dataset_tip`
 - `yelp_academic_dataset_review`
 
+In totality, these datasets occupy roughly 7gb of storage space. There are millions of rows on most of these datasets.
+
+
 ### Checkin
 * business_id: string (nullable = true)
 * date: string (nullable = true)
@@ -307,16 +310,13 @@ Table review_dim as R {
   review_date timestamp
   business_id varchar
   user_id varchar
-
-  
 }
 ```
 ``` JS
 Table review_fact as RF {
   review_id varchar [pk]
-    stars int
-  text varchar
-  
+  stars int
+  text varchar 
 }
 ```
 ``` JS
@@ -351,3 +351,6 @@ Ref: B.name < S.business_name
 #### Database Diagram
 
 ![Data Model](./yelpify_dbd.png)
+
+## Retrospective
+This dataset caused major issues on loading to the DB due to the lack of cleansing. ID fields werent's same length through out. Some had 18 chars some had 1000s. This caused major development problems from which not much can be learned. It would have been better to work on an already clean dataset, such that full focus and effort goes into data pipelines and not into cleaning and figuring out weird errors.
