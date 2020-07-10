@@ -65,6 +65,13 @@ class StageToRedshiftOperator(BaseOperator):
         self.log.info(kwargs)
 
     def execute(self, context):
+        """
+        Module used to load specific data from S3 into Redshift
+        It can load PARQUET, JSON and CSV format files.
+        Accepts data partitioned by dates, such as
+            year=2010/month=11/day=2
+        Ideally for using backfil functionalities
+        """
         credentials = AwsHook(self.aws_credentials_id).get_credentials()
         self.log.info("Creating Redshift Connection")
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
