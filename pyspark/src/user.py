@@ -20,6 +20,26 @@ class User(SparkDF):
         return ['pyear', 'pmonth', 'pday']
 
     def process(self):
+        self.subset_df([
+            'friends',
+                       'compliment_cool',
+                       'compliment_cute',
+                       'compliment_funny',
+                       'compliment_hot',
+                       'compliment_list',
+                       'compliment_more',
+                       'compliment_note',
+                       'compliment_photos',
+                       'compliment_plain',
+                       'compliment_profile',
+                       'compliment_writer',
+                       'cool',
+                       'elite',
+                       'fans',
+                       'funny',
+                       'useful'], option='drop')
+
+    def apply_partitioning(self):
         self.df = (self.df.
                    select(
                        '*',
@@ -27,17 +47,13 @@ class User(SparkDF):
                            col('yelping_since'), 'yyyy-MM-dd HH:mm:ss').alias('yelping_since_dt')
                    )
                    )
-        self.subset_df(['yelping_since'], option='drop')
-        self.df = self.df.withColumnRenamed(
-            "yelping_since_dt", "yelping_since")
-
-    def apply_partitioning(self):
         self.df = (self.df
-                   .withColumn("pmonth", month("yelping_since"))
-                   .withColumn("pyear", year("yelping_since"))
-                   .withColumn("pday", dayofmonth("yelping_since"))
+                   .withColumn("pmonth", month("yelping_since_dt"))
+                   .withColumn("pyear", year("yelping_since_dt"))
+                   .withColumn("pday", dayofmonth("yelping_since_dt"))
                    .select('*')
                    )
+        self.subset_df(['yelping_since_dt'], option='drop')
 
     def write_to_s3(self, s3_path: str, partitioned: bool = False):
         if partitioned:

@@ -20,6 +20,15 @@ class Review(SparkDF):
         return ['pyear', 'pmonth', 'pday']
 
     def process(self):
+        self.subset_df(['cool',
+                        'funny',
+                        'useful'
+                        ], option='drop')
+
+        self.df = self.df.withColumn(
+            'stars', col("stars").cast(StringType()))
+
+    def apply_partitioning(self):
         self.df = (self.df.
                    select(
                        '*',
@@ -27,15 +36,14 @@ class Review(SparkDF):
                            col('date'), 'yyyy-MM-dd HH:mm:ss').alias('dt')
                    )
                    )
-        self.subset_df(['date'], option='drop')
 
-    def apply_partitioning(self):
         self.df = (self.df
                    .withColumn("pmonth", month("dt"))
                    .withColumn("pyear", year("dt"))
                    .withColumn("pday", dayofmonth("dt"))
                    .select('*')
                    )
+        self.subset_df(['dt'], option='drop')
 
     def write_to_s3(self, s3_path: str, partitioned: bool = False):
         if partitioned:
