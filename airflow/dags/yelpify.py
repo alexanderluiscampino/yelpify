@@ -217,36 +217,39 @@ process_review_dim = LoadOperator(
 
 run_quality_checks = DataQualityOperator(
     task_id='Run_data_quality_checks',
-    list_of_table=[table.value for table in Table],
+    redshift_conn_id="redshift",
+    list_of_tables=[table.value for table in Table],
     dag=dag
 )
 
 end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
-start_operator >> setup_database
-setup_database >> stage_business_to_redshift
-setup_database >> stage_review_to_redshift
-setup_database >> stage_users_to_redshift
-setup_database >> stage_tip_to_redshift
-setup_database >> stage_stock_to_redshift
+start_operator >> run_quality_checks
+
+# start_operator >> setup_database
+# setup_database >> stage_business_to_redshift
+# setup_database >> stage_review_to_redshift
+# setup_database >> stage_users_to_redshift
+# setup_database >> stage_tip_to_redshift
+# setup_database >> stage_stock_to_redshift
 
 
-stage_business_to_redshift >> process_city_fact
-stage_review_to_redshift >> process_review_dim
-stage_users_to_redshift >> process_users_fact
-stage_tip_to_redshift >> process_tip_fact
-stage_stock_to_redshift >> process_stock_fact
+# stage_business_to_redshift >> process_city_fact
+# stage_review_to_redshift >> process_review_dim
+# stage_users_to_redshift >> process_users_fact
+# stage_tip_to_redshift >> process_tip_fact
+# stage_stock_to_redshift >> process_stock_fact
 
-process_city_fact >> process_business_fact
-process_business_fact >> process_stock_fact
-process_business_fact >> process_review_dim
-process_business_fact >> process_tip_fact
-process_users_fact >> process_tip_fact
-process_review_dim >> process_review_fact
+# process_city_fact >> process_business_fact
+# process_business_fact >> process_stock_fact
+# process_business_fact >> process_review_dim
+# process_business_fact >> process_tip_fact
+# process_users_fact >> process_tip_fact
+# process_review_dim >> process_review_fact
 
 
-process_tip_fact >> run_quality_checks
-process_stock_fact >> run_quality_checks
-process_review_fact >> run_quality_checks
+# process_tip_fact >> run_quality_checks
+# process_stock_fact >> run_quality_checks
+# process_review_fact >> run_quality_checks
 
-run_quality_checks >> end_operator
+# run_quality_checks >> end_operator

@@ -10,13 +10,13 @@ class DataQualityOperator(BaseOperator):
     @apply_defaults
     def __init__(self,
                  redshift_conn_id="",
-                 list_of_tables=[],
+                 list_of_tables=None,
                  *args, **kwargs):
 
         super(DataQualityOperator, self).__init__(*args, **kwargs)
 
         self.redshift_conn_id = redshift_conn_id
-        self.list_of_tables = list_of_tables
+        self.list_of_tables = list_of_tables if list_of_tables else []
 
     def execute(self, context):
         """
