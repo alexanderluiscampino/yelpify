@@ -231,7 +231,7 @@ class SqlQueries(Enum):
             )
         SELECT distinct
             review_id,
-            CAST(stars AS BIGINT) AS stars,
+            CAST(CAST(stars AS FLOAT) AS INT) AS stars,
             text
         FROM review_staging
     """)
@@ -265,7 +265,7 @@ class SqlQueries(Enum):
         SELECT distinct
             md5('cmg' || date ) stock_id,
             'chipotle' AS business_name,
-            Date,
+            CAST(Date as timestamp) AS Date,
             Close
         FROM stock_staging
     """)
