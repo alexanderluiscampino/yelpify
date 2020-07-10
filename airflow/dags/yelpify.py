@@ -56,6 +56,9 @@ class Table(Enum):
             return path + "/pyear={YEAR}/pmonth={MONTH}/pday={DAY}"
 
 
+list_of_tables = [table.get_table_name(TableType.FACT) for table in Table]
+list_of_tables.append(Table.REVIEW.get_table_name(TableType.DIM))
+
 default_args = {
     'owner': 'alexandrec',
     'start_date': datetime(20, 1, 1),
@@ -218,7 +221,7 @@ process_review_dim = LoadOperator(
 run_quality_checks = DataQualityOperator(
     task_id='Run_data_quality_checks',
     redshift_conn_id="redshift",
-    list_of_tables=[table.value for table in Table],
+    list_of_tables=list_of_tables,
     dag=dag
 )
 
