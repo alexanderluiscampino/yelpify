@@ -68,7 +68,7 @@ delete_tables = staging_tables+list_of_tables if DROP_ALL else staging_tables
 delete_statements = {
     "drop_table": [SqlQueries.drop_table_statement.value.format(TABLE_NAME=table) for table in delete_tables]
 }
-delete_statements = {}
+
 setup_database_dict = {
     query.name: query.value for query in SqlQueries if ('create' in query.name)
 }
